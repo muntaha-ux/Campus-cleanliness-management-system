@@ -65,3 +65,4 @@
 * **Decision**:
   * Ranking, leaderboard, and reporting queries **must never** execute transactional aggregate scans over live operational tables.
   * All analytical queries target pre-computed snapshots (`public.zone_score_snapshots`, `public.monthly_reports`).
+
