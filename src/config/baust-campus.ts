@@ -109,3 +109,4 @@ export const BAUST_INFO = {
   emergencyCleanlinessHotline: '+880 1769 662555',
   estateOfficeEmail: 'estate@baust.edu.bd',
 };
+
