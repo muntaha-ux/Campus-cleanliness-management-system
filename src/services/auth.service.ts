@@ -223,16 +223,18 @@ class AuthService {
 
       if (!user) return { data: null, error: 'Unauthorized' };
 
+      const updatePayload: Database['public']['Tables']['profiles']['Update'] = {
+        updated_at: new Date().toISOString(),
+      };
+      if (dto.full_name !== undefined) updatePayload.full_name = dto.full_name;
+      if (dto.department !== undefined) updatePayload.department = dto.department;
+      if (dto.student_or_employee_id !== undefined) updatePayload.student_or_employee_id = dto.student_or_employee_id;
+      if (dto.profile_photo_url !== undefined) updatePayload.profile_photo_url = dto.profile_photo_url;
+      if (dto.notification_preferences !== undefined) updatePayload.notification_preferences = dto.notification_preferences;
+
       const { data, error } = await serverClient
         .from('profiles')
-        .update({
-          ...(dto.full_name && { full_name: dto.full_name }),
-          ...(dto.department !== undefined && { department: dto.department }),
-          ...(dto.student_or_employee_id !== undefined && { student_or_employee_id: dto.student_or_employee_id }),
-          ...(dto.profile_photo_url !== undefined && { profile_photo_url: dto.profile_photo_url }),
-          ...(dto.notification_preferences && { notification_preferences: dto.notification_preferences }),
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq('id', user.id)
         .select()
         .single();

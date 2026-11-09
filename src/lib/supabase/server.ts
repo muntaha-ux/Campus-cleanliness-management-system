@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { Database } from '@/types/database.types';
 
@@ -7,7 +8,7 @@ import { Database } from '@/types/database.types';
  * For Server Components, Server Actions, and Route Handlers.
  * Automatically refreshes auth tokens and propagates authenticated user's JWT.
  */
-export async function getSupabaseServerClient() {
+export async function getSupabaseServerClient(): Promise<SupabaseClient<Database>> {
   const cookieStore = cookies();
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;

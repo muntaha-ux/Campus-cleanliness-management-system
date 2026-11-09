@@ -1,8 +1,8 @@
 import 'server-only';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database.types';
 
-let adminClient: ReturnType<typeof createClient<Database>> | null = null;
+let adminClient: SupabaseClient<Database> | null = null;
 
 /**
  * Service Role Admin Client
@@ -12,7 +12,7 @@ let adminClient: ReturnType<typeof createClient<Database>> | null = null;
  *  - Nightly scoring snapshots (#83-#85)
  *  - Sanitized anonymous issue intake (#30)
  */
-export function getSupabaseAdminClient() {
+export function getSupabaseAdminClient(): SupabaseClient<Database> {
   if (adminClient) return adminClient;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;

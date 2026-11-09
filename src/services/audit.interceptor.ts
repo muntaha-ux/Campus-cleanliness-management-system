@@ -1,6 +1,6 @@
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { ServiceResponse } from '@/types/database.types';
+import { Json, ServiceResponse } from '@/types/database.types';
 
 export interface AuditLogParams {
   action: string;
@@ -87,8 +87,8 @@ export function withAuditLog<TArgs extends unknown[], TReturn>(
           action: auditConfig.action,
           entity_type: auditConfig.entity_type,
           entity_id: String(resolvedEntityId),
-          state_before: sanitizeAuditPayload(beforeState),
-          state_after: sanitizeAuditPayload(afterState),
+          state_before: (sanitizeAuditPayload(beforeState) as Json) || null,
+          state_after: (sanitizeAuditPayload(afterState) as Json) || null,
           is_security_critical: auditConfig.is_security_critical ?? false,
         });
       } catch (auditError) {
