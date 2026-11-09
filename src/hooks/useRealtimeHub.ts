@@ -20,3 +20,4 @@ export function useRealtimeHub(userId?: string | null) {
     ...notificationState,
   };
 }
+

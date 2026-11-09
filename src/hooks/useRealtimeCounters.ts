@@ -34,6 +34,7 @@ export function useRealtimeCounters(initialCounters?: CleanlinessCounters) {
         .select('status, sla_deadline');
 
       if (!error && data) {
+        const rows = data as unknown as { status: IssueStatus; sla_deadline: string }[];
         const now = new Date();
         let total = 0;
         let pending = 0;
@@ -41,9 +42,9 @@ export function useRealtimeCounters(initialCounters?: CleanlinessCounters) {
         let resolved = 0;
         let overdue = 0;
 
-        for (const row of data) {
+        for (const row of rows) {
           total++;
-          const status = row.status as IssueStatus;
+          const status = row.status;
           if (status === 'SUBMITTED' || status === 'ASSIGNED') pending++;
           else if (status === 'IN_PROGRESS') inProgress++;
           else if (status === 'RESOLVED' || status === 'VERIFIED') resolved++;
@@ -72,11 +73,10 @@ export function useRealtimeCounters(initialCounters?: CleanlinessCounters) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'issues' },
         () => {
-          // Re-evaluate counters dynamically on insert, update, or status change
           fetchCounts();
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         setIsLive(status === 'SUBSCRIBED');
       });
 

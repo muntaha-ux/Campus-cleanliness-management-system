@@ -121,7 +121,7 @@ class DispatchService {
         .select()
         .single();
 
-      if (error) return { data: null, error: error.message };
+      if (error || !data) return { data: null, error: error?.message || 'Failed to start task' };
 
       // Update started_at on active assignment
       await serverClient
@@ -138,7 +138,7 @@ class DispatchService {
         comment: 'Staff commenced on-site cleaning task.',
       });
 
-      return { data, error: null };
+      return { data: data as IssueRow, error: null };
     } catch (err) {
       return { data: null, error: (err as Error).message };
     }
@@ -171,7 +171,7 @@ class DispatchService {
         .select()
         .single();
 
-      if (error) return { data: null, error: error.message };
+      if (error || !data) return { data: null, error: error?.message || 'Failed to resolve task' };
 
       // Complete active task assignment
       await serverClient
@@ -192,17 +192,18 @@ class DispatchService {
       });
 
       // Notify original reporter for verification (#62, #78)
-      if (data.reporter_id) {
+      const resolvedIssue = data as IssueRow;
+      if (resolvedIssue.reporter_id) {
         await serverClient.from('notifications').insert({
-          recipient_id: data.reporter_id,
+          recipient_id: resolvedIssue.reporter_id,
           type: 'ISSUE_RESOLVED',
           title: 'Your Cleanliness Report is Resolved',
-          message: `Issue ${data.reference_number} has been resolved. Please inspect proof photos and verify.`,
-          entity_id: data.id,
+          message: `Issue ${resolvedIssue.reference_number} has been resolved. Please inspect proof photos and verify.`,
+          entity_id: resolvedIssue.id,
         });
       }
 
-      return { data, error: null };
+      return { data: resolvedIssue, error: null };
     } catch (err) {
       return { data: null, error: (err as Error).message };
     }
@@ -229,19 +230,21 @@ class DispatchService {
         return { data: null, error: 'Issue not found.' };
       }
 
+      const issueObj = currentIssue as IssueRow;
+
       // 2. Update issue status
       const { data, error } = await serverClient
         .from('issues')
         .update({
           status: newStatus,
-          reopen_count: dto.is_satisfactory ? currentIssue.reopen_count : currentIssue.reopen_count + 1,
+          reopen_count: dto.is_satisfactory ? issueObj.reopen_count : issueObj.reopen_count + 1,
           updated_at: new Date().toISOString(),
         })
         .eq('id', dto.issue_id)
         .select()
         .single();
 
-      if (error) return { data: null, error: error.message };
+      if (error || !data) return { data: null, error: error?.message || 'Failed to update issue status' };
 
       // 3. Insert verification ratings & feedback record (#79, #80)
       if (dto.is_satisfactory) {
@@ -258,14 +261,14 @@ class DispatchService {
       await serverClient.from('issue_history').insert({
         issue_id: dto.issue_id,
         actor_id: user?.id || null,
-        old_status: currentIssue.status,
+        old_status: issueObj.status,
         new_status: newStatus,
         comment: dto.is_satisfactory
           ? `Verified by user with rating ${dto.student_rating || 5}/5`
           : `Reopened: ${dto.reopen_reason || 'Unsatisfactory cleanliness'}`,
       });
 
-      return { data, error: null };
+      return { data: data as IssueRow, error: null };
     } catch (err) {
       return { data: null, error: (err as Error).message };
     }
@@ -288,8 +291,8 @@ class DispatchService {
         .select()
         .single();
 
-      if (error) return { data: null, error: error.message };
-      return { data, error: null };
+      if (error || !data) return { data: null, error: error?.message || 'Failed to update availability' };
+      return { data: data as StaffProfileRow, error: null };
     } catch (err) {
       return { data: null, error: (err as Error).message };
     }

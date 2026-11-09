@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { Profile } from '@/core/domain/user.types';
+import { BAUST_INFO } from '@/config/baust-campus';
+import { BaustCard } from '@/components/ui/BaustCard';
+import { User, Bell, Mail, Shield, CheckCircle2, Save, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -70,7 +74,7 @@ export default function ProfilePage() {
         return;
       }
 
-      setMessage('Profile updated successfully!');
+      setMessage('Profile settings updated successfully!');
       if (data.profile) {
         setProfile(data.profile);
       }
@@ -82,127 +86,157 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return <div className="text-center py-12 text-slate-500">Loading profile...</div>;
+    return (
+      <div className="text-center py-16 text-slate-500 text-xs font-semibold">
+        Loading BAUST Profile...
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-8">
-      <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              User Profile (#9–#11)
-            </h2>
-            <p className="text-sm text-slate-500">
-              Manage personal details, department, and notification preferences
-            </p>
-          </div>
-          {profile && (
-            <span className="px-3 py-1 rounded-full text-xs font-semibold uppercase bg-slate-100 text-slate-700">
-              {profile.role}
+    <div className="max-w-3xl mx-auto py-8 space-y-6">
+      <div className="bg-gradient-to-r from-baust-primary-950 via-baust-primary-900 to-baust-primary-800 rounded-2xl p-6 text-white shadow-military flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-baust-gold-500 text-slate-950 uppercase tracking-wider">
+              {profile?.role || 'CADET'}
             </span>
-          )}
+            <span className="text-xs text-baust-primary-200">{BAUST_INFO.shortName} Saidpur</span>
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight">
+            Institutional Profile & Settings
+          </h1>
+          <p className="text-xs text-baust-primary-100">
+            Manage your student/cadet identification, department affiliation, and dispatch notifications.
+          </p>
         </div>
 
-        {error && (
-          <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        <div className="w-14 h-14 rounded-full bg-baust-gold-500 text-slate-950 font-black text-xl flex items-center justify-center border-2 border-white shadow-gold">
+          {fullName ? fullName.charAt(0).toUpperCase() : 'B'}
+        </div>
+      </div>
 
-        {message && (
-          <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
-            {message}
-          </div>
-        )}
+      {message && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <span>{message}</span>
+        </div>
+      )}
 
-        <form onSubmit={handleSave} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              disabled
-              value={profile?.email || ''}
-              className="w-full px-3.5 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-sm cursor-not-allowed"
-            />
-          </div>
+      {error && (
+        <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 text-xs font-semibold rounded-xl">
+          {error}
+        </div>
+      )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Full Name
-            </label>
-            <input
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Department
+      <BaustCard title="Institutional Identification (#9, #10)" variant="military">
+        <form onSubmit={handleSave} className="space-y-5">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Full Name
               </label>
               <input
                 type="text"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-baust-primary-600 font-medium"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Student / Employee ID
               </label>
               <input
                 type="text"
                 value={studentOrEmpId}
                 onChange={(e) => setStudentOrEmpId(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                placeholder="e.g. 210101001"
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-baust-primary-600 font-mono font-medium"
               />
             </div>
           </div>
 
-          <div className="pt-2">
-            <h4 className="text-sm font-medium text-slate-900 mb-2">
-              Notification Preferences (#67)
-            </h4>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={emailNotif}
-                  onChange={(e) => setEmailNotif(e.target.checked)}
-                  className="rounded text-emerald-600 focus:ring-emerald-500"
-                />
-                Receive Email Notifications
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Department / Faculty
               </label>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="text"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="e.g. CSE / ME / EEE"
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-baust-primary-600 font-medium"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Official Campus Email
+              </label>
+              <input
+                type="text"
+                disabled
+                value={profile?.email || ''}
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 font-mono cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          {/* Notification Preferences (#58-#65) */}
+          <div className="pt-3 border-t border-slate-100 space-y-3">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Bell className="w-3.5 h-3.5 text-baust-primary-700" />
+              Dispatch & Resolution Notifications (#58-#65)
+            </h4>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={inAppNotif}
                   onChange={(e) => setInAppNotif(e.target.checked)}
-                  className="rounded text-emerald-600 focus:ring-emerald-500"
+                  className="rounded text-baust-primary-700 focus:ring-baust-primary-600 w-4 h-4"
                 />
-                Receive In-App Notifications
+                <span className="font-semibold">Receive in-app status updates for my reported issues</span>
+              </label>
+
+              <label className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={emailNotif}
+                  onChange={(e) => setEmailNotif(e.target.checked)}
+                  className="rounded text-baust-primary-700 focus:ring-baust-primary-600 w-4 h-4"
+                />
+                <span className="font-semibold">Email notification when resolution proof photo is submitted (#62)</span>
               </label>
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-medium px-5 py-2.5 rounded-lg transition shadow-sm"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+          <div className="pt-2 flex justify-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-baust-primary-700 hover:bg-baust-primary-800 disabled:opacity-50 text-white text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-disciplined transition"
+            >
+              {saving ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving Settings...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Profile Changes
+                </>
+              )}
+            </button>
+          </div>
         </form>
-      </div>
+      </BaustCard>
     </div>
   );
 }
-

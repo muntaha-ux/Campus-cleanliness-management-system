@@ -127,12 +127,6 @@ class IssueService {
       const serverClient = await getSupabaseServerClient();
       const { data: { user } } = await serverClient.auth.getUser();
 
-      // Check spatial-temporal duplicates first (#31)
-      const dupes = await this.checkDuplicates(dto.location_id, dto.category);
-      if (dupes.data && dupes.data.length > 0) {
-        // Return 409 Duplicate warning in meta for client confirmation if needed
-      }
-
       const referenceNumber = this.generateReferenceNumber();
       const slaDeadline = this.calculateSlaDeadline(dto.priority);
 
@@ -149,31 +143,29 @@ class IssueService {
         reporterId = user?.id || null;
       }
 
-      // If user is anonymous, use admin client to insert safely bypassing RLS reporter requirement
-      const dbClient = dto.is_anonymous ? getSupabaseAdminClient() : serverClient;
+      const insertPayload: IssueInsert = {
+        reference_number: referenceNumber,
+        reporter_id: reporterId,
+        is_anonymous: dto.is_anonymous ?? false,
+        anonymous_fingerprint: anonymousFingerprint,
+        location_id: dto.location_id,
+        category: dto.category,
+        description: dto.description,
+        priority: dto.priority || 'MEDIUM',
+        status: 'SUBMITTED',
+        photo_urls: dto.photo_urls || [],
+        sla_deadline: slaDeadline,
+      };
 
-      const { data, error } = await dbClient
-        .from('issues')
-        .insert({
-          reference_number: referenceNumber,
-          reporter_id: reporterId,
-          is_anonymous: dto.is_anonymous ?? false,
-          anonymous_fingerprint: anonymousFingerprint,
-          location_id: dto.location_id,
-          category: dto.category,
-          description: dto.description,
-          priority: dto.priority || 'MEDIUM',
-          status: 'SUBMITTED',
-          photo_urls: dto.photo_urls || [],
-          sla_deadline: slaDeadline,
-        })
-        .select()
-        .single();
+      const { data, error } = dto.is_anonymous
+        ? await getSupabaseAdminClient().from('issues').insert(insertPayload).select().single()
+        : await serverClient.from('issues').insert(insertPayload).select().single();
 
-      if (error) return { data: null, error: error.message };
+      if (error || !data) return { data: null, error: error?.message || 'Failed to insert issue' };
 
       // Log initial timeline history (#35)
-      await dbClient.from('issue_history').insert({
+      const auditDb = dto.is_anonymous ? getSupabaseAdminClient() : serverClient;
+      await auditDb.from('issue_history').insert({
         issue_id: data.id,
         actor_id: reporterId,
         new_status: 'SUBMITTED',
@@ -186,7 +178,7 @@ class IssueService {
         await adminClient.rpc('auto_dispatch_issue', { p_issue_id: data.id });
       }
 
-      return { data, error: null };
+      return { data: data as IssueRow, error: null };
     } catch (err) {
       return { data: null, error: (err as Error).message };
     }
@@ -202,21 +194,23 @@ class IssueService {
   ): Promise<ServiceResponse<IssueRow>> {
     try {
       const serverClient = await getSupabaseServerClient();
+      const updatePayload: Database['public']['Tables']['issues']['Update'] = {
+        updated_at: new Date().toISOString(),
+      };
+      if (updates.description !== undefined) updatePayload.description = updates.description;
+      if (updates.photo_urls !== undefined) updatePayload.photo_urls = updates.photo_urls;
+      if (updates.priority !== undefined) updatePayload.priority = updates.priority;
+
       const { data, error } = await serverClient
         .from('issues')
-        .update({
-          ...(updates.description && { description: updates.description }),
-          ...(updates.photo_urls && { photo_urls: updates.photo_urls }),
-          ...(updates.priority && { priority: updates.priority }),
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq('id', issueId)
         .eq('status', 'SUBMITTED')
         .select()
         .single();
 
       if (error) return { data: null, error: error.message };
-      return { data, error: null };
+      return { data: data as IssueRow, error: null };
     } catch (err) {
       return { data: null, error: (err as Error).message };
     }
@@ -240,17 +234,17 @@ class IssueService {
         .select()
         .single();
 
-      if (error) return { data: null, error: error.message };
+      if (error || !data) return { data: null, error: error?.message || 'Failed to cancel issue' };
 
       await serverClient.from('issue_history').insert({
         issue_id: issueId,
         actor_id: user?.id || null,
-        old_status: data.status,
+        old_status: (data as IssueRow).status,
         new_status: 'CANCELLED',
         comment: `Issue cancelled: ${reason}`,
       });
 
-      return { data, error: null };
+      return { data: data as IssueRow, error: null };
     } catch (err) {
       return { data: null, error: (err as Error).message };
     }

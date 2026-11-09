@@ -18,6 +18,6 @@ export function getSupabaseBrowserClient(): SupabaseClient<Database> {
     throw new Error('Missing Supabase public credentials in environment variables.');
   }
 
-  browserClient = createBrowserClient<Database>(url, anonKey);
+  browserClient = createBrowserClient<Database>(url, anonKey) as unknown as SupabaseClient<Database>;
   return browserClient;
 }

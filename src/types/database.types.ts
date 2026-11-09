@@ -39,7 +39,7 @@ export interface Database {
           updated_by?: string | null;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       locations: {
         Row: {
@@ -81,7 +81,7 @@ export interface Database {
           is_active?: boolean;
           created_at?: string;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       profiles: {
         Row: {
@@ -134,7 +134,7 @@ export interface Database {
           };
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       staff_profiles: {
         Row: {
@@ -167,7 +167,7 @@ export interface Database {
           assigned_building?: string | null;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       issues: {
         Row: {
@@ -230,7 +230,7 @@ export interface Database {
           version?: number;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       issue_history: {
         Row: {
@@ -259,7 +259,7 @@ export interface Database {
           new_status?: IssueStatus;
           comment?: string | null;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       task_assignments: {
         Row: {
@@ -297,7 +297,7 @@ export interface Database {
           status?: string;
           version?: number;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       issue_verifications: {
         Row: {
@@ -329,7 +329,7 @@ export interface Database {
           feedback_notes?: string | null;
           is_flagged_for_admin?: boolean;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       notifications: {
         Row: {
@@ -361,7 +361,7 @@ export interface Database {
           entity_id?: string | null;
           is_read?: boolean;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       zone_score_snapshots: {
         Row: {
@@ -402,7 +402,7 @@ export interface Database {
           formula_version?: string;
           metrics_breakdown?: Json;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       monthly_reports: {
         Row: {
@@ -443,7 +443,7 @@ export interface Database {
           csv_storage_path?: string | null;
           generated_by?: string | null;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
       audit_logs: {
         Row: {
@@ -487,7 +487,7 @@ export interface Database {
           request_id?: string | null;
           is_security_critical?: boolean;
         };
-        Relationships: [];
+        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean; referencedRelation: string; referencedColumns: string[]; }[];
       };
     };
     Views: {

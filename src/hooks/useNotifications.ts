@@ -23,8 +23,9 @@ export function useNotifications(userId?: string | null) {
       .limit(30);
 
     if (!error && data) {
-      setNotifications(data);
-      setUnreadCount(data.filter((n) => !n.is_read).length);
+      const rows = data as unknown as NotificationRow[];
+      setNotifications(rows);
+      setUnreadCount(rows.filter((n) => !n.is_read).length);
     }
     setLoading(false);
   }, [userId]);
@@ -49,7 +50,7 @@ export function useNotifications(userId?: string | null) {
           table: 'notifications',
           filter: `recipient_id=eq.${userId}`,
         },
-        (payload) => {
+        (payload: any) => {
           const newNotification = payload.new as NotificationRow;
           setNotifications((prev) => [newNotification, ...prev]);
           setUnreadCount((c) => c + 1);
@@ -78,7 +79,7 @@ export function useNotifications(userId?: string | null) {
     const supabase = getSupabaseBrowserClient();
     const { error } = await supabase
       .from('notifications')
-      .update({ is_read: true })
+      .update({ is_read: true } as any)
       .eq('id', notificationId);
 
     if (!error) {
@@ -94,7 +95,7 @@ export function useNotifications(userId?: string | null) {
     const supabase = getSupabaseBrowserClient();
     const { error } = await supabase
       .from('notifications')
-      .update({ is_read: true })
+      .update({ is_read: true } as any)
       .eq('recipient_id', userId)
       .eq('is_read', false);
 

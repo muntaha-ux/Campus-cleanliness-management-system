@@ -139,10 +139,10 @@ class AnalyticsService {
           .select('snapshot_date')
           .order('snapshot_date', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (latestDateRow) {
-          query = query.eq('snapshot_date', latestDateRow.snapshot_date);
+          query = query.eq('snapshot_date', (latestDateRow as { snapshot_date: string }).snapshot_date);
         }
       }
 
@@ -206,7 +206,7 @@ class AnalyticsService {
         .single();
 
       if (error) return { data: null, error: error.message };
-      return { data, error: null };
+      return { data: data as MonthlyReportRow, error: null };
     } catch (err) {
       return { data: null, error: (err as Error).message };
     }

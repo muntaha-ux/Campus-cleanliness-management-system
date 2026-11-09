@@ -18,7 +18,7 @@ export async function getSupabaseServerClient(): Promise<SupabaseClient<Database
     throw new Error('Missing Supabase public credentials in environment variables.');
   }
 
-  return createServerClient<Database>(url, anonKey, {
+  const client = createServerClient<Database>(url, anonKey, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;
@@ -39,4 +39,6 @@ export async function getSupabaseServerClient(): Promise<SupabaseClient<Database
       },
     },
   });
+
+  return client as unknown as SupabaseClient<Database>;
 }
