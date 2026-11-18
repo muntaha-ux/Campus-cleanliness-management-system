@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { UserRole } from '@/types/database.types';
 
@@ -11,13 +11,14 @@ const ROLE_HOME: Record<UserRole, string> = {
 };
 
 /**
- * Next.js 16 Routing Proxy (formerly middleware)
- * Enforces authentication, RBAC, and user active state checks before page rendering.
+ * Next.js 16 Routing Proxy
+ * Handles auth token rotation via @supabase/ssr getAll/setAll,
+ * protects private routes, and enforces strict RBAC before page render.
  */
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Bypass static assets, images, and favicon
+  // Bypass static assets, internal paths, and images
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
@@ -38,77 +39,97 @@ export async function proxy(request: NextRequest) {
 
   const supabase = createServerClient(url, anonKey, {
     cookies: {
-      get(name: string) {
-        return request.cookies.get(name)?.value;
+      getAll() {
+        return request.cookies.getAll();
       },
-      set(name: string, value: string, options: CookieOptions) {
-        request.cookies.set({ name, value, ...options });
+      setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({
           request: {
             headers: request.headers,
           },
         });
-        response.cookies.set({ name, value, ...options });
-      },
-      remove(name: string, options: CookieOptions) {
-        request.cookies.set({ name, value: '', ...options });
-        response = NextResponse.next({
-          request: {
-            headers: request.headers,
-          },
-        });
-        response.cookies.set({ name, value: '', ...options });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options)
+        );
       },
     },
   });
 
-  // Verify authenticated session
+  // Verify and refresh user session
   const { data: { user } } = await supabase.auth.getUser();
 
   let userRole: UserRole | null = null;
   let isActive = true;
 
   if (user) {
-    // Fetch live profile to inspect role and active status
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, is_active')
-      .eq('id', user.id)
-      .single();
+    // 1. Read metadata for immediate role resolution
+    userRole = (user.user_metadata?.role as UserRole) || null;
 
-    if (profile) {
-      userRole = profile.role as UserRole;
-      isActive = profile.is_active;
-    } else {
-      userRole = (user.user_metadata?.role as UserRole) || 'STUDENT';
+    // 2. Fetch live profile to inspect verified role and active status
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, is_active')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
+        userRole = (profile.role as UserRole) || userRole;
+        isActive = profile.is_active !== false;
+      }
+    } catch {
+      // Fallback to metadata role if database query encounters transient issues
     }
+
+    if (!userRole) {
+      userRole = 'STUDENT';
+    }
+
+    // Helper: copy refreshed session cookies to any redirect response
+    const makeRedirect = (targetUrl: string | URL) => {
+      const redirectRes = NextResponse.redirect(new URL(targetUrl, request.url));
+      response.cookies.getAll().forEach((c) => {
+        redirectRes.cookies.set(c.name, c.value);
+      });
+      return redirectRes;
+    };
 
     // Prohibit deactivated accounts from accessing the system (#16)
     if (!isActive) {
       await supabase.auth.signOut();
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('error', 'Your account has been deactivated. Please contact campus administration.');
-      return NextResponse.redirect(loginUrl);
+      return makeRedirect(loginUrl);
     }
 
-    // Propagate authenticated headers
+    // Propagate authenticated headers to downstream Server Components
     response.headers.set('x-user-id', user.id);
     response.headers.set('x-user-role', userRole);
     response.headers.set('x-user-email', user.email || '');
+
+    // If an authenticated user visits auth pages, redirect to their home workstation
+    const isAuthRoute =
+      pathname === '/login' ||
+      pathname === '/register' ||
+      pathname === '/forgot-password';
+
+    if (isAuthRoute) {
+      const destination = ROLE_HOME[userRole] || '/student';
+      return makeRedirect(destination);
+    }
   }
 
-  const isAuthRoute =
-    pathname === '/login' ||
-    pathname === '/register' ||
-    pathname === '/forgot-password';
+  // Helper: copy refreshed session cookies to any redirect response
+  const makeRedirect = (targetUrl: string | URL) => {
+    const redirectRes = NextResponse.redirect(new URL(targetUrl, request.url));
+    response.cookies.getAll().forEach((c) => {
+      redirectRes.cookies.set(c.name, c.value);
+    });
+    return redirectRes;
+  };
 
-  // 1. Authenticated users navigating to login/register get redirected to their dashboard
-  if (user && isAuthRoute && userRole) {
-    const destination = ROLE_HOME[userRole] || '/student';
-    return NextResponse.redirect(new URL(destination, request.url));
-  }
-
-  // 2. Protected routes check
+  // Protected routes check
   const isProtected =
     pathname.startsWith('/admin') ||
     pathname.startsWith('/staff') ||
@@ -126,10 +147,10 @@ export async function proxy(request: NextRequest) {
     }
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirectTo', pathname);
-    return NextResponse.redirect(loginUrl);
+    return makeRedirect(loginUrl);
   }
 
-  // 3. Role-Based Access Control (RBAC) (#12)
+  // Role-Based Access Control (RBAC) (#12)
   if (user && userRole) {
     // Admin routes
     if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
@@ -140,28 +161,28 @@ export async function proxy(request: NextRequest) {
             { status: 403 }
           );
         }
-        return NextResponse.redirect(new URL('/unauthorized', request.url));
+        return makeRedirect('/unauthorized');
       }
     }
 
     // Staff routes
     if (pathname.startsWith('/staff')) {
       if (userRole !== 'STAFF' && userRole !== 'ADMIN') {
-        return NextResponse.redirect(new URL('/unauthorized', request.url));
+        return makeRedirect('/unauthorized');
       }
     }
 
     // Teacher routes
     if (pathname.startsWith('/teacher')) {
       if (userRole !== 'TEACHER' && userRole !== 'ADMIN') {
-        return NextResponse.redirect(new URL('/unauthorized', request.url));
+        return makeRedirect('/unauthorized');
       }
     }
 
     // Student routes
     if (pathname.startsWith('/student')) {
       if (userRole !== 'STUDENT' && userRole !== 'ADMIN') {
-        return NextResponse.redirect(new URL('/unauthorized', request.url));
+        return makeRedirect('/unauthorized');
       }
     }
   }
@@ -174,6 +195,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
-
-// Dual-export for backward compatibility with tooling
-export { proxy as middleware };

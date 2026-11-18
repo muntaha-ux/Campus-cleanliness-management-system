@@ -35,10 +35,18 @@ export default function LoginPage() {
 
       // Role-based redirect
       const role = data.user?.role;
-      if (role === 'ADMIN') router.push('/admin');
-      else if (role === 'STAFF') router.push('/staff');
-      else if (role === 'TEACHER') router.push('/teacher');
-      else router.push('/student');
+      let target = '/student';
+      if (role === 'ADMIN') target = '/admin';
+      else if (role === 'STAFF') target = '/staff';
+      else if (role === 'TEACHER') target = '/teacher';
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirectTo');
+      if (redirectTo && redirectTo.startsWith('/')) {
+        target = redirectTo;
+      }
+
+      window.location.href = target;
     } catch {
       setError('An unexpected error occurred. Please try again.');
       setLoading(false);

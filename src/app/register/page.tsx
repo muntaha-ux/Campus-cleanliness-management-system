@@ -47,10 +47,12 @@ export default function RegisterPage() {
 
       // If registered successfully, navigate to appropriate dashboard
       const userRole = data.user?.role || role;
-      if (userRole === 'ADMIN') router.push('/admin');
-      else if (userRole === 'STAFF') router.push('/staff');
-      else if (userRole === 'TEACHER') router.push('/teacher');
-      else router.push('/student');
+      let target = '/student';
+      if (userRole === 'ADMIN') target = '/admin';
+      else if (userRole === 'STAFF') target = '/staff';
+      else if (userRole === 'TEACHER') target = '/teacher';
+
+      window.location.href = target;
     } catch {
       setError('An unexpected error occurred. Please try again.');
       setLoading(false);
