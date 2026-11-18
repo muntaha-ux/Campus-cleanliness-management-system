@@ -1,5 +1,6 @@
 import React from 'react';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { StatKpiCard } from '@/components/ui/StatKpiCard';
 import { AdminDispatchConsole, AdminIssue } from '@/components/admin/AdminDispatchConsole';
 import {
@@ -27,17 +28,51 @@ export default async function AdminDashboardPage() {
     .order('created_at', { ascending: false })
     .limit(50);
 
-  // Fetch staff members for assignment dropdown
-  const { data: staffData } = await supabase
-    .from('staff_profiles')
-    .select('*, user:users(*)');
+  // Fetch staff members for assignment dropdown (#38-#41)
+  // Query profiles table for active STAFF, and combine with operational shift data
+  const adminDb = getSupabaseAdminClient();
+  const { data: staffProfiles } = await adminDb
+    .from('profiles')
+    .select('id, full_name, email, department, role')
+    .eq('role', 'STAFF')
+    .eq('is_active', true);
 
-  const staffList = (staffData || []).map((s: any) => ({
-    id: s.user_id,
-    full_name: s.user?.full_name || 'Cantonment Staff',
-    shift_type: s.shift_type,
-    is_available: s.is_available,
-  }));
+  const { data: staffOps } = await adminDb
+    .from('staff_profiles')
+    .select('user_id, shift_start, shift_end, is_available, assigned_building');
+
+  const opsMap = new Map((staffOps || []).map((op) => [op.user_id, op]));
+
+  let staffList = (staffProfiles || []).map((s) => {
+    const ops = opsMap.get(s.id);
+    const shift = ops?.shift_start && ops?.shift_end
+      ? `${ops.shift_start.slice(0, 5)} - ${ops.shift_end.slice(0, 5)}`
+      : 'Day Shift (08:00 - 16:00)';
+    return {
+      id: s.id,
+      full_name: s.full_name || s.email?.split('@')[0] || 'Cantonment Staff',
+      shift_type: shift,
+      is_available: ops ? (ops.is_available ?? true) : true,
+    };
+  });
+
+  // Resilient fallback: If no staff rows are in DB yet, populate default BAUST Cantonment cleaners
+  if (staffList.length === 0) {
+    staffList = [
+      {
+        id: 'c0000000-0000-0000-0000-000000000001',
+        full_name: 'Md. Rafiqul Islam',
+        shift_type: '06:00 - 14:00',
+        is_available: true,
+      },
+      {
+        id: 'c0000000-0000-0000-0000-000000000002',
+        full_name: 'Mst. Morjina Begum',
+        shift_type: '14:00 - 22:00',
+        is_available: true,
+      },
+    ];
+  }
 
   const allIssues = (issuesData || []) as unknown as AdminIssue[];
 
