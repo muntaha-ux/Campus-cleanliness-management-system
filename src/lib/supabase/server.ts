@@ -9,7 +9,7 @@ import { Database } from '@/types/database.types';
  * Automatically refreshes auth tokens and propagates authenticated user's JWT.
  */
 export async function getSupabaseServerClient(): Promise<SupabaseClient<Database>> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;

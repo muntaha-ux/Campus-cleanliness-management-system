@@ -10,7 +10,11 @@ const ROLE_HOME: Record<UserRole, string> = {
   STUDENT: '/student',
 };
 
-export async function middleware(request: NextRequest) {
+/**
+ * Next.js 16 Routing Proxy (formerly middleware)
+ * Enforces authentication, RBAC, and user active state checks before page rendering.
+ */
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Bypass static assets, images, and favicon
@@ -170,3 +174,6 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
+
+// Dual-export for backward compatibility with tooling
+export { proxy as middleware };

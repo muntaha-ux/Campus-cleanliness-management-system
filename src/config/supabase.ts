@@ -20,7 +20,7 @@ export function createSupabaseBrowserClient() {
  * To be used in Server Components, Server Actions, and Route Handlers
  */
 export async function createSupabaseServerClient() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   return createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
