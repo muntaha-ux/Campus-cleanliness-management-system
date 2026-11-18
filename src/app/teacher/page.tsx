@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { BaustCard } from '@/components/ui/BaustCard';
 import { StatKpiCard } from '@/components/ui/StatKpiCard';
 import { ReportIssueWizard } from '@/components/issues/ReportIssueWizard';
+import { TeacherVerificationQueue, TeacherIssueItem } from '@/components/teacher/TeacherVerificationQueue';
 import {
   GraduationCap,
   Building,
@@ -29,8 +30,9 @@ export default async function TeacherDashboardPage() {
     .order('created_at', { ascending: false })
     .limit(10);
 
-  const pendingVerification = departmentIssues?.filter((i) => i.status === 'RESOLVED') || [];
-  const activeClassroomIssues = departmentIssues?.filter((i) => i.status === 'SUBMITTED' || i.status === 'ASSIGNED' || i.status === 'IN_PROGRESS') || [];
+  const allIssues = (departmentIssues || []) as unknown as TeacherIssueItem[];
+  const pendingVerification = allIssues.filter((i) => i.status === 'RESOLVED');
+  const activeClassroomIssues = allIssues.filter((i) => i.status === 'SUBMITTED' || i.status === 'ASSIGNED' || i.status === 'IN_PROGRESS');
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -88,81 +90,9 @@ export default async function TeacherDashboardPage() {
 
       {/* Verification Queue & Issue Intake */}
       <div className="grid lg:grid-cols-12 gap-8 items-start">
-        {/* Left: Faculty Verification Queue (#78) */}
+        {/* Left: Faculty Verification Queue (#78, Figure 3: Review Work -> Approve / Rework) */}
         <div className="lg:col-span-6 space-y-6">
-          <BaustCard
-            title="Faculty Verification Queue (#78)"
-            subtitle="Inspect cleaning proof photos and sign off or request rework"
-            variant="accent"
-            badge={
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                {pendingVerification.length} Pending
-              </span>
-            }
-          >
-            {pendingVerification.length === 0 ? (
-              <div className="py-8 text-center space-y-2">
-                <CheckCircle className="w-8 h-8 text-emerald-600 mx-auto" />
-                <p className="text-xs font-semibold text-slate-700">All Academic Work Orders Verified</p>
-                <p className="text-[11px] text-slate-500">
-                  No classroom or laboratory issues currently require faculty sign-off.
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {pendingVerification.map((issue: any) => (
-                  <div key={issue.id} className="py-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="font-mono text-xs font-bold text-baust-primary-900">
-                          {issue.reference_number}
-                        </span>
-                        <h4 className="text-xs font-semibold text-slate-800 mt-0.5">
-                          {issue.description}
-                        </h4>
-                        <p className="text-[11px] text-slate-500">
-                          Location: {issue.location?.building} • {issue.location?.floor}
-                        </p>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase">
-                        Cleaned
-                      </span>
-                    </div>
-
-                    {/* Proof Photos Preview */}
-                    {issue.proof_photo_urls && issue.proof_photo_urls.length > 0 && (
-                      <div className="flex gap-2">
-                        {issue.proof_photo_urls.map((url: string, i: number) => (
-                          <img
-                            key={i}
-                            src={url}
-                            alt="Resolution Proof"
-                            className="w-16 h-12 object-cover rounded border border-slate-200"
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Action buttons */}
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        type="button"
-                        className="px-3 py-1.5 bg-baust-primary-700 hover:bg-baust-primary-800 text-white text-xs font-bold rounded-lg transition"
-                      >
-                        Approve & Verify
-                      </button>
-                      <button
-                        type="button"
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition"
-                      >
-                        Request Rework (#81)
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </BaustCard>
+          <TeacherVerificationQueue initialIssues={pendingVerification} />
 
           {/* Departmental Hygiene Protocol Notice */}
           <BaustCard

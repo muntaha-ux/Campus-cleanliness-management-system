@@ -178,6 +178,29 @@ class IssueService {
         await adminClient.rpc('auto_dispatch_issue', { p_issue_id: data.id });
       }
 
+      // Notify Supervisors (Figure 2: NotifySupervisor)
+      try {
+        const adminClient = getSupabaseAdminClient();
+        const { data: supervisors } = await adminClient
+          .from('profiles')
+          .select('id')
+          .in('role', ['ADMIN', 'TEACHER'])
+          .limit(10);
+
+        if (supervisors && supervisors.length > 0) {
+          const notifs = supervisors.map((s) => ({
+            recipient_id: s.id,
+            type: 'NEW_ISSUE_REPORTED',
+            title: `New Report: ${referenceNumber}`,
+            message: `New cleanliness incident reported in ${dto.category}. Requires supervisor triage.`,
+            entity_id: data.id,
+          }));
+          await adminClient.from('notifications').insert(notifs);
+        }
+      } catch {
+        // Notification dispatch should be non-blocking
+      }
+
       return { data: data as IssueRow, error: null };
     } catch (err) {
       return { data: null, error: (err as Error).message };
@@ -251,6 +274,53 @@ class IssueService {
   }
 
   /**
+   * Supervisor: Reject & Close Issue (Activity Diagram: Review Issue -> Legitimate? -> No)
+   */
+  public async rejectIssue(issueId: string, reason: string): Promise<ServiceResponse<IssueRow>> {
+    try {
+      const serverClient = await getSupabaseServerClient();
+      const { data: { user } } = await serverClient.auth.getUser();
+
+      const { data, error } = await serverClient
+        .from('issues')
+        .update({
+          status: 'CANCELLED',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', issueId)
+        .select()
+        .single();
+
+      if (error || !data) return { data: null, error: error?.message || 'Failed to reject issue' };
+
+      const issueObj = data as IssueRow;
+
+      await serverClient.from('issue_history').insert({
+        issue_id: issueId,
+        actor_id: user?.id || null,
+        old_status: issueObj.status,
+        new_status: 'CANCELLED',
+        comment: `Supervisor rejected report: ${reason}`,
+      });
+
+      // Send notification to reporter (Figure 1: Send Notification)
+      if (issueObj.reporter_id) {
+        await serverClient.from('notifications').insert({
+          recipient_id: issueObj.reporter_id,
+          type: 'ISSUE_REJECTED',
+          title: `Report Rejected: ${issueObj.reference_number}`,
+          message: `Your report was reviewed by the supervisor and marked non-actionable: ${reason}`,
+          entity_id: issueObj.id,
+        });
+      }
+
+      return { data: issueObj, error: null };
+    } catch (err) {
+      return { data: null, error: (err as Error).message };
+    }
+  }
+
+  /**
    * Get Issue Detail with History and Location (#34, #35)
    */
   public async getIssueById(issueId: string): Promise<ServiceResponse<IssueRow & { location: LocationRow }>> {
@@ -298,6 +368,14 @@ export const issueService = {
       entity_id: (data) => (data as IssueRow)?.id || 'unknown',
     },
     rawIssueService.cancelIssue.bind(rawIssueService)
+  ),
+  rejectIssue: withAuditLog(
+    {
+      action: 'ISSUE_REJECTED',
+      entity_type: 'ISSUE',
+      entity_id: (data) => (data as IssueRow)?.id || 'unknown',
+    },
+    rawIssueService.rejectIssue.bind(rawIssueService)
   ),
   getIssueById: rawIssueService.getIssueById.bind(rawIssueService),
 };
