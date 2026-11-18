@@ -40,7 +40,14 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Registration failed');
+        let msg = data.error || 'Registration failed';
+        if (data.details?.fieldErrors) {
+          const fieldMsgs = Object.values(data.details.fieldErrors).flat() as string[];
+          if (fieldMsgs.length > 0) {
+            msg = fieldMsgs.join('. ');
+          }
+        }
+        setError(msg);
         setLoading(false);
         return;
       }
@@ -204,10 +211,27 @@ export default function RegisterPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="e.g. Password123!"
                   className="w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-baust-primary-600 font-medium"
                 />
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              </div>
+              <div className="text-[11px] text-slate-500 space-y-1 pt-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                <p className="font-semibold text-slate-700 text-[11px]">Security Requirements:</p>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px]">
+                  <span className={password.length >= 8 ? 'text-emerald-700 font-bold' : 'text-slate-500'}>
+                    {password.length >= 8 ? '✓' : '○'} Min 8 characters
+                  </span>
+                  <span className={/[A-Z]/.test(password) ? 'text-emerald-700 font-bold' : 'text-slate-500'}>
+                    {/[A-Z]/.test(password) ? '✓' : '○'} 1 Uppercase (A-Z)
+                  </span>
+                  <span className={/[0-9]/.test(password) ? 'text-emerald-700 font-bold' : 'text-slate-500'}>
+                    {/[0-9]/.test(password) ? '✓' : '○'} 1 Number (0-9)
+                  </span>
+                  <span className={/[^A-Za-z0-9]/.test(password) ? 'text-emerald-700 font-bold' : 'text-slate-500'}>
+                    {/[^A-Za-z0-9]/.test(password) ? '✓' : '○'} 1 Special symbol (!@#$)
+                  </span>
+                </div>
               </div>
             </div>
 

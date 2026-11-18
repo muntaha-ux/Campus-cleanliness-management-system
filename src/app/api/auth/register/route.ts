@@ -10,8 +10,14 @@ export async function POST(req: NextRequest) {
     const validatedData = signUpSchema.safeParse(body);
 
     if (!validatedData.success) {
+      const flattened = validatedData.error.flatten();
+      const firstErrorMessage =
+        Object.values(flattened.fieldErrors).flat()[0] ||
+        flattened.formErrors[0] ||
+        'Validation failed';
+
       return NextResponse.json(
-        { error: 'Validation failed', details: validatedData.error.flatten() },
+        { error: firstErrorMessage, details: flattened },
         { status: 400 }
       );
     }

@@ -110,3 +110,4 @@ FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 SELECT 
     (SELECT COUNT(*) FROM auth.users) AS total_auth_users,
     (SELECT COUNT(*) FROM public.profiles) AS total_profiles;
+
